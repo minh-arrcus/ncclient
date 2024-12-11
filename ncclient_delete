@@ -1,0 +1,120 @@
+from ncclient import manager
+
+# Device details
+device = {
+    "host": "10.50.10.130",        # Device IP address
+    "port": 830,                  # Default NETCONF port
+    "username": "root",          # Device username
+    "password": "arrcus",       # Device password
+    "hostkey_verify": False       # Disable host key verification (for testing purposes)
+}
+
+
+new_config = """
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" 
+        xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+ <interfaces xmlns="http://openconfig.net/yang/interfaces">
+      <interface>
+        <name>swp27</name>
+        <subinterfaces>
+          <subinterface nc:operation="delete">
+            <index>5001</index>
+            <config>
+              <index>5001</index>
+              <name>swp27.5001</name>
+              <enabled>true</enabled>
+            </config>
+            <vlan xmlns="http://openconfig.net/yang/vlan">
+              <match>
+                <single-tagged>
+                  <config>
+                    <vlan-id>12</vlan-id>
+                  </config>
+                </single-tagged>
+              </match>
+              <egress-mapping>
+                <config>
+                  <vlan-stack-action>SWAP</vlan-stack-action>
+                  <vlan-id>12</vlan-id>
+                </config>
+              </egress-mapping>
+            </vlan>
+
+            <ipv6 xmlns="http://openconfig.net/yang/interfaces/ip">
+              <config>
+                <enabled>false</enabled>
+              </config>
+            </ipv6>
+            <ipv4 xmlns="http://openconfig.net/yang/interfaces/ip">
+              <config>
+                <enabled>false</enabled>
+              </config>
+            </ipv4>
+          </subinterface>
+        </subinterfaces>
+      </interface>
+    </interfaces>
+    <network-instances xmlns="http://openconfig.net/yang/network-instance">
+      <network-instance nc:operation="delete">
+        <name>newrinumber1</name>
+        <config>
+          <name>newrinumber1</name>
+          <type xmlns:arc-oc-ni-types="http://yang.arrcus.com/arcos/openconfig/network-instance/types">arc-oc-ni-types:L2P2P_EVPN</type>
+          <description>Please refer to admin tool for customer details</description>
+          <evi xmlns="http://yang.arrcus.com/arcos/evpn">
+            <evi-id>2235</evi-id>
+            <control-word>true</control-word>
+          </evi>
+        </config>
+        <interfaces>
+          <interface>
+            <id>swp27.5001</id>
+            <config>
+              <id>swp27.5001</id>
+              <interface>swp27</interface>
+              <subinterface>5001</subinterface>
+            </config>
+            <vpws-service-id xmlns="http://yang.arrcus.com/arcos/evpn">
+              <config>
+                <local>9999</local>
+                <remote>1111</remote>
+              </config>
+            </vpws-service-id>
+          </interface>
+        </interfaces>
+        <protocols>
+          <protocol>
+            <identifier xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</identifier>
+            <name>newrinumber1</name>
+            <config>
+              <identifier xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</identifier>
+              <name>newrinumber1</name>
+            </config>
+            <bgp>
+              <global>
+                <config>
+                  <route-distinguisher xmlns="http://yang.arrcus.com/arcos/openconfig/bgp/augments">192.168.1.1:40</route-distinguisher>
+                </config>
+              </global>
+              <route-targets xmlns="http://yang.arrcus.com/arcos/openconfig/bgp/augments">
+                <route-target>
+                  <route-target>1234:1</route-target>
+                  <route-target-type>both</route-target-type>
+                  <config>
+                    <route-target>1234:1</route-target>
+                    <route-target-type>both</route-target-type>
+                  </config>
+                </route-target>
+              </route-targets>
+            </bgp>
+          </protocol>
+        </protocols>
+      </network-instance>
+    </network-instances>
+</config>
+"""
+
+with manager.connect(**device) as m:
+    m.edit_config(target='candidate', config=new_config)
+    m.commit()
+    print("Configuration applied successfully.")
