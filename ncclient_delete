@@ -2,11 +2,11 @@ from ncclient import manager
 
 # Device details
 device = {
-    "host": "10.50.10.130",        # Device IP address
-    "port": 830,                  # Default NETCONF port
+    "host": "x.x.x.x",      # Device IP address
+    "port": 830,                 # Default NETCONF port
     "username": "root",          # Device username
-    "password": "arrcus",       # Device password
-    "hostkey_verify": False       # Disable host key verification (for testing purposes)
+    "password": "arrcus",        # Device password
+    "hostkey_verify": False      # Disable host key verification (for testing purposes)
 }
 
 
