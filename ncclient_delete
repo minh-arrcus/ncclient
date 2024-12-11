@@ -2,7 +2,7 @@ from ncclient import manager
 
 # Device details
 device = {
-    "host": "x.x.x.x",      # Device IP address
+    "host": "x.x.x.x",           # Device IP address
     "port": 830,                 # Default NETCONF port
     "username": "root",          # Device username
     "password": "arrcus",        # Device password
