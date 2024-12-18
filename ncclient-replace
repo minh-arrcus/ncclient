@@ -1,0 +1,869 @@
+from ncclient import manager
+
+# Device details
+device = {
+    "host": "x.x.x.x",        # Device IP address
+    "port": 830,              # Default NETCONF port
+    "username": "root",       # Device username
+    "password": "arrcus",     # Device password
+    "hostkey_verify": False   # Disable host key verification (for testing purposes)
+}
+
+
+new_config = """
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" 
+        xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <system-information xmlns="http://yang.arrcus.com/arcos/system-information">
+    <version>6.1.1A.P1 [release] 2024-09-09 19:55:52</version>
+  </system-information>
+  <features xmlns="http://yang.arrcus.com/arcos/features">
+    <feature>
+      <name>ARCOS_RIOT</name>
+      <supported>false</supported>
+    </feature>
+    <feature>
+      <name>ARCOS_ICMP_SRC_REWRITE</name>
+      <supported>true</supported>
+    </feature>
+    <feature>
+      <name>ARCOS_SUBIF</name>
+      <supported>true</supported>
+    </feature>
+    <feature>
+      <name>ARCOS_QoS</name>
+      <supported>false</supported>
+    </feature>
+    <feature>
+      <name>ARCOS_MPLS</name>
+      <supported>true</supported>
+    </feature>
+    <feature>
+      <name>ARCOS_SFLOW</name>
+      <supported>true</supported>
+    </feature>
+  </features>
+  <system xmlns="http://openconfig.net/yang/system">
+    <config>
+      <hostname>bw-arrcus-4</hostname>
+      <login-banner>ArcOS (c) Arrcus, Inc.</login-banner>
+    </config>
+    <dns>
+      <servers>
+        <server>
+          <address>10.255.255.6</address>
+          <config>
+            <address>10.255.255.6</address>
+          </config>
+        </server>
+      </servers>
+    </dns>
+    <ssh-server>
+      <config>
+        <enable>true</enable>
+        <ciphers xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">AES128_CTR</ciphers>
+        <ciphers xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">AES192_CTR</ciphers>
+        <ciphers xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">AES256_CTR</ciphers>
+        <ciphers xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">AES128_GCM@OPENSSH.COM</ciphers>
+        <ciphers xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">AES256_GCM@OPENSSH.COM</ciphers>
+        <permit-root-login xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">true</permit-root-login>
+        <network-instance xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">management</network-instance>
+      </config>
+      <sftp xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">
+        <config>
+          <enable>true</enable>
+        </config>
+      </sftp>
+    </ssh-server>
+    <logging>
+      <confd xmlns="http://yang.arrcus.com/arcos/openconfig/system/logging">
+        <config>
+          <developer-log-level>trace</developer-log-level>
+        </config>
+      </confd>
+    </logging>
+    <aaa>
+      <authentication>
+        <admin-user>
+          <config>
+            <admin-password>$6$7VV3/LeeE/121KPs$RyVPX3sdVqBj/VbQV9NOUgc0Q9DfMAA4yzP/9NmdVA.DFBqQAPWFwqcQmoEQtLjK5/w7ANIxbC1DY7cbnz6A60</admin-password>
+          </config>
+        </admin-user>
+      </authentication>
+    </aaa>
+    <rib xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">
+      <address-family xmlns:oc-types="http://openconfig.net/yang/openconfig-types">oc-types:IPV6</address-family>
+      <config>
+        <address-family xmlns:oc-types="http://openconfig.net/yang/openconfig-types">oc-types:IPV6</address-family>
+      </config>
+    </rib>
+    <rib xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">
+      <address-family xmlns:oc-types="http://openconfig.net/yang/openconfig-types">oc-types:IPV4</address-family>
+      <config>
+        <address-family xmlns:oc-types="http://openconfig.net/yang/openconfig-types">oc-types:IPV4</address-family>
+      </config>
+    </rib>
+    <netconf-server xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">
+      <config>
+        <enable>true</enable>
+      </config>
+      <transport>
+        <ssh>
+          <config>
+            <enable>true</enable>
+            <port>830</port>
+          </config>
+        </ssh>
+      </transport>
+    </netconf-server>
+    <restconf-server xmlns="http://yang.arrcus.com/arcos/openconfig/system/augments">
+      <config>
+        <enable>true</enable>
+      </config>
+    </restconf-server>
+  </system>
+  <interfaces xmlns="http://openconfig.net/yang/interfaces">
+    <interface>
+      <name>ma1</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <mtu>1500</mtu>
+        <name>ma1</name>
+        <enabled>true</enabled>
+      </config>
+      <subinterfaces>
+        <subinterface>
+          <index>0</index>
+        </subinterface>
+      </subinterfaces>
+    </interface>
+    <interface>
+      <name>swp1</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp1</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp2</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp2</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp3</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp3</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp4</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp4</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp5</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp5</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp6</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp6</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp7</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp7</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp8</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp8</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp9</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp9</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp10</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp10</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp11</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp11</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp12</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp12</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp13</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp13</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp14</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp14</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp15</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp15</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp16</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp16</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp17</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp17</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp18</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp18</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp19</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp19</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp20</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp20</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp21</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp21</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp22</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp22</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp23</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp23</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp24</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp24</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp25</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp25</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp26</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp26</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp27</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp27</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp28</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp28</name>
+      </config>
+    </interface>
+    <interface>
+      <name>swp29</name>
+      <config>
+        <type xmlns:ianaift="urn:ietf:params:xml:ns:yang:iana-if-type">ianaift:ethernetCsmacd</type>
+        <name>swp29</name>
+      </config>
+    </interface>
+  </interfaces>
+  <network-instances xmlns="http://openconfig.net/yang/network-instance">
+    <network-instance>
+      <name>default</name>
+      <config>
+        <name>default</name>
+      </config>
+      <table-connections>
+        <table-connection>
+          <src-protocol xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:DIRECTLY_CONNECTED</src-protocol>
+          <dst-protocol xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</dst-protocol>
+          <address-family xmlns:oc-types="http://openconfig.net/yang/openconfig-types">oc-types:IPV4</address-family>
+          <config>
+            <src-protocol xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:DIRECTLY_CONNECTED</src-protocol>
+            <address-family xmlns:oc-types="http://openconfig.net/yang/openconfig-types">oc-types:IPV4</address-family>
+            <dst-protocol xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</dst-protocol>
+          </config>
+        </table-connection>
+      </table-connections>
+      <mpls>
+        <global>
+          <reserved-label-blocks>
+            <reserved-label-block>
+              <local-id>bgp</local-id>
+              <config>
+                <local-id>bgp</local-id>
+                <lower-bound>970000</lower-bound>
+                <upper-bound>979000</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">BGP_COMMON</usage>
+                <protocol-identifier xmlns="http://yang.arrcus.com/arcos/mpls" xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</protocol-identifier>
+              </config>
+            </reserved-label-block>
+            <reserved-label-block>
+              <local-id>dynamic</local-id>
+              <config>
+                <local-id>dynamic</local-id>
+                <lower-bound>960000</lower-bound>
+                <upper-bound>969999</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">LDP_COMMON</usage>
+                <protocol-identifier xmlns="http://yang.arrcus.com/arcos/mpls" xmlns:arc-oc-pol-types="http://yang.arrcus.com/arcos/openconfig/policy-types">arc-oc-pol-types:LDP</protocol-identifier>
+              </config>
+            </reserved-label-block>
+            <reserved-label-block>
+              <local-id>evpn</local-id>
+              <config>
+                <local-id>evpn</local-id>
+                <lower-bound>2000</lower-bound>
+                <upper-bound>2999</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">BGP_EVPN_COMMON</usage>
+                <protocol-identifier xmlns="http://yang.arrcus.com/arcos/mpls" xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</protocol-identifier>
+              </config>
+            </reserved-label-block>
+            <reserved-label-block>
+              <local-id>evpn-esi</local-id>
+              <config>
+                <local-id>evpn-esi</local-id>
+                <lower-bound>5000</lower-bound>
+                <upper-bound>5999</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">BGP_EVPN_ESI</usage>
+                <protocol-identifier xmlns="http://yang.arrcus.com/arcos/mpls" xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</protocol-identifier>
+              </config>
+            </reserved-label-block>
+            <reserved-label-block>
+              <local-id>evpn-imet</local-id>
+              <config>
+                <local-id>evpn-imet</local-id>
+                <lower-bound>900000</lower-bound>
+                <upper-bound>950000</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">BGP_EVPN_IMET</usage>
+              </config>
+            </reserved-label-block>
+            <reserved-label-block>
+              <local-id>rb1</local-id>
+              <config>
+                <local-id>rb1</local-id>
+                <lower-bound>20000</lower-bound>
+                <upper-bound>199999</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">ISIS_SRGB</usage>
+                <protocol-identifier xmlns="http://yang.arrcus.com/arcos/mpls" xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:ISIS</protocol-identifier>
+                <protocol-name xmlns="http://yang.arrcus.com/arcos/mpls">default</protocol-name>
+              </config>
+            </reserved-label-block>
+            <reserved-label-block>
+              <local-id>rb2</local-id>
+              <config>
+                <local-id>rb2</local-id>
+                <lower-bound>210000</lower-bound>
+                <upper-bound>220000</upper-bound>
+                <usage xmlns="http://yang.arrcus.com/arcos/mpls">ISIS_SRLB</usage>
+                <protocol-identifier xmlns="http://yang.arrcus.com/arcos/mpls" xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:ISIS</protocol-identifier>
+                <protocol-name xmlns="http://yang.arrcus.com/arcos/mpls">default</protocol-name>
+              </config>
+            </reserved-label-block>
+          </reserved-label-blocks>
+        </global>
+        <signaling-protocols>
+          <ldp>
+            <global>
+              <config>
+                <lsr-id>192.0.11.12</lsr-id>
+              </config>
+              <attributes>
+                <config>
+                  <php-type xmlns:oc-mplst="http://openconfig.net/yang/mpls-types">oc-mplst:IMPLICIT</php-type>
+                  <php-enable>false</php-enable>
+                </config>
+              </attributes>
+              <fec-filter xmlns="http://yang.arrcus.com/arcos/openconfig/network-instance/augments">
+                <config>
+                  <default-export-policy>ACCEPT_ROUTE</default-export-policy>
+                </config>
+              </fec-filter>
+              <transport-address xmlns="http://yang.arrcus.com/arcos/openconfig/network-instance/augments">
+                <config>
+                  <ipv4>192.0.11.12</ipv4>
+                </config>
+              </transport-address>
+            </global>
+            <interface-attributes>
+              <interfaces>
+                <interface>
+                  <interface-id>swp3</interface-id>
+                  <config>
+                    <interface-id>swp3</interface-id>
+                    <link-hello>true</link-hello>
+                  </config>
+                  <address-families>
+                    <address-family>
+                      <afi-name>IPV4</afi-name>
+                      <config>
+                        <afi-name>IPV4</afi-name>
+                        <enabled>true</enabled>
+                      </config>
+                    </address-family>
+                  </address-families>
+                </interface>
+                <interface>
+                  <interface-id>swp32</interface-id>
+                  <config>
+                    <interface-id>swp32</interface-id>
+                    <link-hello>true</link-hello>
+                  </config>
+                  <address-families>
+                    <address-family>
+                      <afi-name>IPV4</afi-name>
+                      <config>
+                        <afi-name>IPV4</afi-name>
+                        <enabled>true</enabled>
+                      </config>
+                    </address-family>
+                  </address-families>
+                </interface>
+              </interfaces>
+            </interface-attributes>
+          </ldp>
+        </signaling-protocols>
+      </mpls>
+      <protocols>
+        <protocol>
+          <identifier xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</identifier>
+          <name>default</name>
+          <config>
+            <identifier xmlns:oc-pol-types="http://openconfig.net/yang/policy-types">oc-pol-types:BGP</identifier>
+            <name>default</name>
+          </config>
+          <bgp>
+            <global>
+              <config>
+                <as>65532</as>
+                <router-id>192.0.11.17</router-id>
+              </config>
+              <afi-safis>
+                <afi-safi>
+                  <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:IPV4_UNICAST</afi-safi-name>
+                  <config>
+                    <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:IPV4_UNICAST</afi-safi-name>
+                  </config>
+                </afi-safi>
+                <afi-safi>
+                  <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:L3VPN_IPV6_UNICAST</afi-safi-name>
+                  <config>
+                    <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:L3VPN_IPV6_UNICAST</afi-safi-name>
+                    <retain-route-target-all xmlns="http://yang.arrcus.com/arcos/openconfig/bgp/augments">true</retain-route-target-all>
+                  </config>
+                </afi-safi>
+                <afi-safi>
+                  <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:L2VPN_EVPN</afi-safi-name>
+                  <config>
+                    <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:L2VPN_EVPN</afi-safi-name>
+                    <retain-route-target-all xmlns="http://yang.arrcus.com/arcos/openconfig/bgp/augments">true</retain-route-target-all>
+                  </config>
+                  <use-maximum-paths xmlns="http://yang.arrcus.com/arcos/openconfig/bgp/augments">
+                    <config>
+                      <ibgp>
+                        <maximum-paths>2</maximum-paths>
+                      </ibgp>
+                    </config>
+                  </use-maximum-paths>
+                </afi-safi>
+                <afi-safi>
+                  <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:L3VPN_IPV4_UNICAST</afi-safi-name>
+                  <config>
+                    <afi-safi-name xmlns:oc-bgp-types="http://openconfig.net/yang/bgp-types">oc-bgp-types:L3VPN_IPV4_UNICAST</afi-safi-name>
+                    <retain-route-target-all xmlns="http://yang.arrcus.com/arcos/openconfig/bgp/augments">true</retain-route-target-all>
+                  </config>
+                </afi-safi>
+                <afi-safi>
+                  <afi-safi-name xmlns:arc-oc-bgp-types="http://yang.arrcus.com/arcos/openconfig/bgp/types">arc-oc-bgp-types:RTFILTER</afi-safi-name>
+                  <config>
+                    <afi-safi-name xmlns:arc-oc-bgp-types="http://yang.arrcus.com/arcos/openconfig/bgp/types">arc-oc-bgp-types:RTFILTER</afi-safi-name>
+                  </config>
+                </afi-safi>
+              </afi-safis>
+            </global>
+          </bgp>
+        </protocol>
+      </protocols>
+    </network-instance>
+    <network-instance>
+      <name>management</name>
+      <config>
+        <name>management</name>
+      </config>
+      <interfaces>
+        <interface>
+          <id>ma1</id>
+          <config>
+            <id>ma1</id>
+            <interface>ma1</interface>
+            <subinterface>0</subinterface>
+          </config>
+        </interface>
+      </interfaces>
+    </network-instance>
+  </network-instances>
+  <lldp xmlns="http://openconfig.net/yang/lldp">
+    <interfaces>
+      <interface>
+        <name>ma1</name>
+        <config>
+          <name>ma1</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp1</name>
+        <config>
+          <name>swp1</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp2</name>
+        <config>
+          <name>swp2</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp3</name>
+        <config>
+          <name>swp3</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp4</name>
+        <config>
+          <name>swp4</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp5</name>
+        <config>
+          <name>swp5</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp6</name>
+        <config>
+          <name>swp6</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp7</name>
+        <config>
+          <name>swp7</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp8</name>
+        <config>
+          <name>swp8</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp9</name>
+        <config>
+          <name>swp9</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp10</name>
+        <config>
+          <name>swp10</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp11</name>
+        <config>
+          <name>swp11</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp12</name>
+        <config>
+          <name>swp12</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp13</name>
+        <config>
+          <name>swp13</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp14</name>
+        <config>
+          <name>swp14</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp15</name>
+        <config>
+          <name>swp15</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp16</name>
+        <config>
+          <name>swp16</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp17</name>
+        <config>
+          <name>swp17</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp18</name>
+        <config>
+          <name>swp18</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp19</name>
+        <config>
+          <name>swp19</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp20</name>
+        <config>
+          <name>swp20</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp21</name>
+        <config>
+          <name>swp21</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp22</name>
+        <config>
+          <name>swp22</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp23</name>
+        <config>
+          <name>swp23</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp24</name>
+        <config>
+          <name>swp24</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp25</name>
+        <config>
+          <name>swp25</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp26</name>
+        <config>
+          <name>swp26</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp27</name>
+        <config>
+          <name>swp27</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp28</name>
+        <config>
+          <name>swp28</name>
+        </config>
+      </interface>
+      <interface>
+        <name>swp29</name>
+        <config>
+          <name>swp29</name>
+        </config>
+      </interface>
+    </interfaces>
+  </lldp>
+  <routing-policy xmlns="http://openconfig.net/yang/routing-policy">
+    <defined-sets>
+      <prefix-sets>
+        <prefix-set>
+          <prefix-set-name>__IPV4_MARTIAN_PREFIX_SET__</prefix-set-name>
+          <config>
+            <prefix-set-name>__IPV4_MARTIAN_PREFIX_SET__</prefix-set-name>
+          </config>
+          <prefixes>
+            <prefix>
+              <ip-prefix>0.0.0.0/8</ip-prefix>
+              <masklength-range>8..32</masklength-range>
+              <config>
+                <ip-prefix>0.0.0.0/8</ip-prefix>
+                <masklength-range>8..32</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>127.0.0.0/8</ip-prefix>
+              <masklength-range>8..32</masklength-range>
+              <config>
+                <ip-prefix>127.0.0.0/8</ip-prefix>
+                <masklength-range>8..32</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>192.0.0.0/24</ip-prefix>
+              <masklength-range>24..32</masklength-range>
+              <config>
+                <ip-prefix>192.0.0.0/24</ip-prefix>
+                <masklength-range>24..32</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>224.0.0.0/4</ip-prefix>
+              <masklength-range>exact</masklength-range>
+              <config>
+                <ip-prefix>224.0.0.0/4</ip-prefix>
+                <masklength-range>exact</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>224.0.0.0/24</ip-prefix>
+              <masklength-range>exact</masklength-range>
+              <config>
+                <ip-prefix>224.0.0.0/24</ip-prefix>
+                <masklength-range>exact</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>240.0.0.0/4</ip-prefix>
+              <masklength-range>4..32</masklength-range>
+              <config>
+                <ip-prefix>240.0.0.0/4</ip-prefix>
+                <masklength-range>4..32</masklength-range>
+              </config>
+            </prefix>
+          </prefixes>
+        </prefix-set>
+        <prefix-set>
+          <prefix-set-name>__IPV6_MARTIAN_PREFIX_SET__</prefix-set-name>
+          <config>
+            <prefix-set-name>__IPV6_MARTIAN_PREFIX_SET__</prefix-set-name>
+          </config>
+          <prefixes>
+            <prefix>
+              <ip-prefix>::/128</ip-prefix>
+              <masklength-range>exact</masklength-range>
+              <config>
+                <ip-prefix>::/128</ip-prefix>
+                <masklength-range>exact</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>::1/128</ip-prefix>
+              <masklength-range>exact</masklength-range>
+              <config>
+                <ip-prefix>::1/128</ip-prefix>
+                <masklength-range>exact</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>ff00::/8</ip-prefix>
+              <masklength-range>exact</masklength-range>
+              <config>
+                <ip-prefix>ff00::/8</ip-prefix>
+                <masklength-range>exact</masklength-range>
+              </config>
+            </prefix>
+            <prefix>
+              <ip-prefix>ff02::/16</ip-prefix>
+              <masklength-range>exact</masklength-range>
+              <config>
+                <ip-prefix>ff02::/16</ip-prefix>
+                <masklength-range>exact</masklength-range>
+              </config>
+            </prefix>
+          </prefixes>
+        </prefix-set>
+      </prefix-sets>
+    </defined-sets>
+  </routing-policy>
+</config>
+"""
+
+with manager.connect(**device) as m:
+    m.edit_config(target='candidate', config=new_config, default_operation="replace")
+    m.commit()
+    print("Configuration applied successfully.")
