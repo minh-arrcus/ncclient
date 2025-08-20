@@ -2,7 +2,7 @@ import time
 import subprocess
 
 while True:
-    subprocess.run(["/usr/bin/python3", "/home/minh/ncclient_create"])
+    subprocess.run(["/usr/bin/python3", "ncclient_create"])
     time.sleep(10)
-    subprocess.run(["/usr/bin/python3", "/home/minh/ncclient_delete"])
+    subprocess.run(["/usr/bin/python3", "ncclient_delete"])
     time.sleep(10)
